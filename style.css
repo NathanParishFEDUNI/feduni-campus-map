@@ -1,0 +1,50 @@
+﻿html,
+body {
+    margin: 0;
+    padding: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    font-family: Arial, sans-serif;
+}
+
+#map {
+    width: 100vw;
+    height: 100vh;
+}
+
+/*
+ROUTING PANEL
+*/
+
+.leaflet-routing-container {
+
+    background: white;
+
+    padding: 10px;
+
+    border-radius: 8px;
+
+    max-height: 300px;
+
+    overflow-y: auto;
+
+    font-size: 14px;
+}
+
+/*
+MOBILE IMPROVEMENTS
+*/
+
+@media (max-width: 768px) {
+
+    .leaflet-routing-container {
+
+        width: 90%;
+
+        font-size: 12px;
+    }
+}
