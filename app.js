@@ -1,4 +1,4 @@
-﻿//
+//
 // ============================================
 // FEDERATION UNIVERSITY MOUNT HELEN BOUNDARY
 // ============================================
@@ -21,7 +21,7 @@ const campusBounds = L.latLngBounds(
 
 //
 // ============================================
-// CENTER OF MAP
+// MAP CENTER
 // ============================================
 //
 
@@ -47,6 +47,7 @@ const map = L.map('map', {
     zoom: 17,
 
     minZoom: 16,
+
     maxZoom: 21,
 
     maxBounds: campusBounds,
@@ -55,8 +56,14 @@ const map = L.map('map', {
 });
 
 //
+// REMOVE LEAFLET BRANDING
+//
+
+map.attributionControl.setPrefix(false);
+
+//
 // ============================================
-// OPENSTREETMAP TILE LAYER
+// OPENSTREETMAP TILES
 // ============================================
 //
 
@@ -86,7 +93,7 @@ L.rectangle(campusBounds, {
 
 //
 // ============================================
-// USER LOCATION
+// USER LOCATION VARIABLES
 // ============================================
 //
 
@@ -98,7 +105,7 @@ let userLatLng = null;
 
 //
 // ============================================
-// ROUTING
+// ROUTING VARIABLES
 // ============================================
 //
 
@@ -124,7 +131,7 @@ function updateUserLocation(
     );
 
     //
-    // IGNORE IF OUTSIDE CAMPUS
+    // IGNORE OUTSIDE CAMPUS
     //
 
     if (!campusBounds.contains(userLatLng)) {
@@ -137,13 +144,13 @@ function updateUserLocation(
     }
 
     //
-    // FIRST TIME
+    // FIRST GPS FIX
     //
 
     if (!userMarker) {
 
         //
-        // BLUE LOCATION DOT
+        // BLUE DOT
         //
 
         userMarker = L.circleMarker(
@@ -164,7 +171,7 @@ function updateUserLocation(
         ).addTo(map);
 
         //
-        // ACCURACY CIRCLE
+        // GPS ACCURACY CIRCLE
         //
 
         accuracyCircle = L.circle(
@@ -180,10 +187,19 @@ function updateUserLocation(
             }
         ).addTo(map);
 
+        //
+        // CENTER MAP ON USER
+        //
+
+        map.setView(
+            userLatLng,
+            18
+        );
+
     } else {
 
         //
-        // UPDATE POSITION
+        // UPDATE USER POSITION
         //
 
         userMarker.setLatLng(
@@ -255,7 +271,7 @@ if (navigator.geolocation) {
 
 //
 // ============================================
-// CLICK TO CREATE DESTINATION
+// CLICK MAP TO CREATE ROUTE
 // ============================================
 //
 
@@ -284,7 +300,7 @@ map.on(
             event.latlng;
 
         //
-        // CHECK BOUNDARY
+        // CHECK CAMPUS BOUNDARY
         //
 
         if (
@@ -335,7 +351,7 @@ map.on(
         }
 
         //
-        // CREATE WALKING ROUTE
+        // CREATE FOOTPATH ROUTE
         //
 
         routingControl =
@@ -348,12 +364,22 @@ map.on(
                     destination
                 ],
 
+                //
+                // FOOT ROUTING ENGINE
+                //
+
                 router:
                     L.Routing.osrmv1({
 
                     serviceUrl:
-                        'https://router.project-osrm.org/route/v1'
+                        'https://routing.openstreetmap.de/routed-foot/route/v1',
+
+                    profile: 'driving'
                 }),
+
+                //
+                // ROUTE STYLE
+                //
 
                 lineOptions: {
 
@@ -361,10 +387,16 @@ map.on(
                         {
                             color: '#007bff',
 
-                            weight: 6
+                            weight: 6,
+
+                            opacity: 0.9
                         }
                     ]
                 },
+
+                //
+                // ROUTING OPTIONS
+                //
 
                 routeWhileDragging: false,
 
@@ -374,7 +406,15 @@ map.on(
 
                 fitSelectedRoutes: true,
 
-                show: true
+                showAlternatives: false,
+
+                collapsible: true,
+
+                show: true,
+
+                createMarker: function() {
+                    return null;
+                }
 
             }).addTo(map);
     }
@@ -382,7 +422,7 @@ map.on(
 
 //
 // ============================================
-// FORCE MAP TO STAY IN BOUNDS
+// KEEP MAP INSIDE BOUNDS
 // ============================================
 //
 
