@@ -48,7 +48,7 @@ const map = L.map('map', {
 
     minZoom: 16,
 
-    maxZoom: 21,
+    maxZoom: 18,
 
     maxBounds: campusBounds,
 
@@ -410,7 +410,7 @@ map.on(
 
                 collapsible: true,
 
-                show: true,
+                show: false,
 
                 createMarker: function() {
                     return null;
