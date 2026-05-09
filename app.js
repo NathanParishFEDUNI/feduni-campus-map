@@ -4,20 +4,10 @@
 // ============================================
 //
 
-const southWest = L.latLng(
-    -37.63012,
-    143.88818
-);
+const southWest = L.latLng(-37.63012, 143.88818);
+const northEast = L.latLng(-37.62208, 143.89760);
 
-const northEast = L.latLng(
-    -37.62208,
-    143.89760
-);
-
-const campusBounds = L.latLngBounds(
-    southWest,
-    northEast
-);
+const campusBounds = L.latLngBounds(southWest, northEast);
 
 //
 // ============================================
@@ -33,7 +23,6 @@ const map = L.map('map', {
     ],
 
     zoom: 17,
-
     minZoom: 16,
     maxZoom: 18,
 
@@ -45,16 +34,23 @@ map.attributionControl.setPrefix(false);
 
 //
 // ============================================
-// OSM BASE LAYER
+// BASE MAP
 // ============================================
 //
 
-L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-        attribution: '&copy; OpenStreetMap contributors'
-    }
-).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+//
+// ============================================
+// SHARED OSRM FOOT ROUTER
+// ============================================
+//
+
+const sharedRouter = L.Routing.osrmv1({
+    serviceUrl: 'https://routing.openstreetmap.de/routed-foot/route/v1'
+});
 
 //
 // ============================================
@@ -118,7 +114,6 @@ if (navigator.geolocation) {
     navigator.geolocation.watchPosition(
 
         (pos) => {
-
             updateUserLocation(
                 pos.coords.latitude,
                 pos.coords.longitude,
@@ -137,17 +132,15 @@ if (navigator.geolocation) {
 
 //
 // ============================================
-// LOAD BUILDINGS (OSM GEOJSON)
+// BUILDINGS GEOJSON
 // ============================================
 //
 
 fetch('data/buildings.geojson')
-
 .then(res => res.json())
-
 .then(data => {
 
-    const buildingsLayer = L.geoJSON(data, {
+    L.geoJSON(data, {
 
         style: () => ({
             color: '#007bff',
@@ -158,22 +151,17 @@ fetch('data/buildings.geojson')
 
         onEachFeature: function(feature, layer) {
 
-            const name =
-                feature?.properties?.name || "Building";
+            const name = feature?.properties?.name || "Building";
+            const pageUrl = "pages/default.html";
 
-            const pageUrl =
-                "pages/default.html";
-
-            //
-            // CLICK EVENT (IMPORTANT FIX)
-            //
             layer.on('click', function(e) {
 
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
+                // ✅ IMPORTANT FIX:
+                // use EXACT click location, not centroid or entrance snapping
+                const clickedLatLng = e.latlng;
 
-                layer.bindPopup(
-                    `
+                layer.bindPopup(`
+
                     <div style="text-align:center; min-width:180px;">
 
                         <h3>${name}</h3>
@@ -194,7 +182,7 @@ fetch('data/buildings.geojson')
                         </button>
 
                         <button
-                            onclick="routeToBuilding(${lat}, ${lng}, '${name}')"
+                            onclick="routeToBuilding(${clickedLatLng.lat}, ${clickedLatLng.lng}, '${name}')"
                             style="
                                 width:100%;
                                 padding:10px;
@@ -208,10 +196,10 @@ fetch('data/buildings.geojson')
                         </button>
 
                     </div>
-                    `
-                );
 
-                layer.openPopup(e.latlng);
+                `);
+
+                layer.openPopup(clickedLatLng);
             });
         }
 
@@ -220,7 +208,7 @@ fetch('data/buildings.geojson')
 
 //
 // ============================================
-// ROUTING FUNCTION (FIXED)
+// ROUTING FUNCTION
 // ============================================
 //
 
@@ -253,13 +241,7 @@ function routeToBuilding(lat, lng, name) {
             destination
         ],
 
-        router: L.Routing.osrmv1({
-
-            serviceUrl:
-                'https://routing.openstreetmap.de/routed-foot/route/v1',
-
-            profile: 'driving'
-        }),
+        router: sharedRouter,
 
         lineOptions: {
             styles: [{
@@ -274,7 +256,6 @@ function routeToBuilding(lat, lng, name) {
         draggableWaypoints: false,
         fitSelectedRoutes: true,
         show: false,
-
         createMarker: () => null
 
     }).addTo(map);
@@ -284,13 +265,78 @@ function routeToBuilding(lat, lng, name) {
 
 //
 // ============================================
+// MAP CLICK (FREE DESTINATION)
+// ============================================
+//
+
+map.on('click', function(e) {
+
+    const clickedLatLng = e.latlng;
+
+    let clickedOnBuilding = false;
+
+    map.eachLayer(layer => {
+        if (layer.feature && layer.getBounds) {
+            if (layer.getBounds().contains(clickedLatLng)) {
+                clickedOnBuilding = true;
+            }
+        }
+    });
+
+    if (!clickedOnBuilding) {
+
+        if (!userLatLng) {
+            alert("Waiting for GPS location...");
+            return;
+        }
+
+        if (destinationMarker) {
+            map.removeLayer(destinationMarker);
+        }
+
+        destinationMarker = L.marker(clickedLatLng)
+            .addTo(map)
+            .bindPopup("Custom Destination")
+            .openPopup();
+
+        if (routingControl) {
+            map.removeControl(routingControl);
+        }
+
+        routingControl = L.Routing.control({
+
+            waypoints: [
+                userLatLng,
+                clickedLatLng
+            ],
+
+            router: sharedRouter,
+
+            lineOptions: {
+                styles: [{
+                    color: '#007bff',
+                    weight: 6,
+                    opacity: 0.9
+                }]
+            },
+
+            routeWhileDragging: false,
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: true,
+            show: false,
+            createMarker: () => null
+
+        }).addTo(map);
+    }
+});
+
+//
+// ============================================
 // BOUNDARY LOCK
 // ============================================
 //
 
 map.on('drag', function() {
-
-    map.panInsideBounds(campusBounds, {
-        animate: false
-    });
+    map.panInsideBounds(campusBounds, { animate: false });
 });
