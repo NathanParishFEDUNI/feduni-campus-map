@@ -1,6 +1,6 @@
 //
 // ============================================
-// FEDERATION UNIVERSITY MOUNT HELEN BOUNDARY
+// CAMPUS BOUNDS
 // ============================================
 //
 
@@ -21,420 +21,276 @@ const campusBounds = L.latLngBounds(
 
 //
 // ============================================
-// MAP CENTER
-// ============================================
-//
-
-const centerLat =
-    (-37.63012 + -37.62208) / 2;
-
-const centerLng =
-    (143.88818 + 143.89760) / 2;
-
-//
-// ============================================
-// CREATE MAP
+// MAP INIT
 // ============================================
 //
 
 const map = L.map('map', {
 
     center: [
-        centerLat,
-        centerLng
+        (southWest.lat + northEast.lat) / 2,
+        (southWest.lng + northEast.lng) / 2
     ],
 
     zoom: 17,
 
     minZoom: 16,
-
     maxZoom: 18,
 
     maxBounds: campusBounds,
-
     maxBoundsViscosity: 1.0
 });
-
-//
-// REMOVE LEAFLET BRANDING
-//
 
 map.attributionControl.setPrefix(false);
 
 //
 // ============================================
-// OPENSTREETMAP TILES
+// OSM BASE LAYER
 // ============================================
 //
 
 L.tileLayer(
     'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     {
-        attribution:
-            '&copy; OpenStreetMap contributors'
+        attribution: '&copy; OpenStreetMap contributors'
     }
 ).addTo(map);
 
 //
 // ============================================
-// VISUAL BOUNDARY BOX
-// ============================================
-//
-
-L.rectangle(campusBounds, {
-
-    color: "#007bff",
-
-    weight: 2,
-
-    fill: false
-
-}).addTo(map);
-
-//
-// ============================================
-// USER LOCATION VARIABLES
+// USER LOCATION
 // ============================================
 //
 
 let userMarker = null;
-
 let accuracyCircle = null;
-
 let userLatLng = null;
 
 //
 // ============================================
-// ROUTING VARIABLES
+// ROUTING STATE
 // ============================================
 //
 
 let routingControl = null;
-
 let destinationMarker = null;
 
 //
 // ============================================
-// UPDATE USER LOCATION
+// LIVE GPS
 // ============================================
 //
 
-function updateUserLocation(
-    latitude,
-    longitude,
-    accuracy
-) {
+function updateUserLocation(lat, lng, accuracy) {
 
-    userLatLng = L.latLng(
-        latitude,
-        longitude
-    );
+    userLatLng = L.latLng(lat, lng);
 
-    //
-    // IGNORE OUTSIDE CAMPUS
-    //
-
-    if (!campusBounds.contains(userLatLng)) {
-
-        console.log(
-            "User outside campus boundary"
-        );
-
-        return;
-    }
-
-    //
-    // FIRST GPS FIX
-    //
+    if (!campusBounds.contains(userLatLng)) return;
 
     if (!userMarker) {
 
-        //
-        // BLUE DOT
-        //
+        userMarker = L.circleMarker(userLatLng, {
+            radius: 10,
+            fillColor: "#007bff",
+            color: "#fff",
+            weight: 3,
+            fillOpacity: 1
+        }).addTo(map);
 
-        userMarker = L.circleMarker(
-            userLatLng,
-            {
-                radius: 10,
+        accuracyCircle = L.circle(userLatLng, {
+            radius: accuracy,
+            color: "#007bff",
+            fillOpacity: 0.15
+        }).addTo(map);
 
-                fillColor: "#007bff",
-
-                color: "#ffffff",
-
-                weight: 3,
-
-                opacity: 1,
-
-                fillOpacity: 1
-            }
-        ).addTo(map);
-
-        //
-        // GPS ACCURACY CIRCLE
-        //
-
-        accuracyCircle = L.circle(
-            userLatLng,
-            {
-                radius: accuracy,
-
-                color: "#007bff",
-
-                fillColor: "#007bff",
-
-                fillOpacity: 0.15
-            }
-        ).addTo(map);
-
-        //
-        // CENTER MAP ON USER
-        //
-
-        map.setView(
-            userLatLng,
-            18
-        );
+        map.setView(userLatLng, 18);
 
     } else {
 
-        //
-        // UPDATE USER POSITION
-        //
-
-        userMarker.setLatLng(
-            userLatLng
-        );
-
-        accuracyCircle.setLatLng(
-            userLatLng
-        );
-
-        accuracyCircle.setRadius(
-            accuracy
-        );
+        userMarker.setLatLng(userLatLng);
+        accuracyCircle.setLatLng(userLatLng);
+        accuracyCircle.setRadius(accuracy);
     }
 }
-
-//
-// ============================================
-// LIVE GPS TRACKING
-// ============================================
-//
 
 if (navigator.geolocation) {
 
     navigator.geolocation.watchPosition(
 
-        function(position) {
-
-            const latitude =
-                position.coords.latitude;
-
-            const longitude =
-                position.coords.longitude;
-
-            const accuracy =
-                position.coords.accuracy;
+        (pos) => {
 
             updateUserLocation(
-                latitude,
-                longitude,
-                accuracy
+                pos.coords.latitude,
+                pos.coords.longitude,
+                pos.coords.accuracy
             );
         },
 
-        function(error) {
-
-            console.error(error);
-
-            alert(
-                "Location access denied or unavailable."
-            );
-        },
+        (err) => console.log(err),
 
         {
             enableHighAccuracy: true,
-
-            maximumAge: 1000,
-
-            timeout: 10000
+            maximumAge: 1000
         }
-    );
-
-} else {
-
-    alert(
-        "Geolocation not supported."
     );
 }
 
 //
 // ============================================
-// CLICK MAP TO CREATE ROUTE
+// LOAD BUILDINGS (OSM GEOJSON)
 // ============================================
 //
 
-map.on(
-    'click',
-    function(event) {
+fetch('data/buildings.geojson')
 
-        //
-        // WAIT FOR GPS
-        //
+.then(res => res.json())
 
-        if (!userLatLng) {
+.then(data => {
 
-            alert(
-                "Waiting for GPS location..."
-            );
+    const buildingsLayer = L.geoJSON(data, {
 
-            return;
+        style: () => ({
+            color: '#007bff',
+            weight: 2,
+            fillColor: '#007bff',
+            fillOpacity: 0.2
+        }),
+
+        onEachFeature: function(feature, layer) {
+
+            const name =
+                feature?.properties?.name || "Building";
+
+            const pageUrl =
+                "pages/default.html";
+
+            //
+            // CLICK EVENT (IMPORTANT FIX)
+            //
+            layer.on('click', function(e) {
+
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                layer.bindPopup(
+                    `
+                    <div style="text-align:center; min-width:180px;">
+
+                        <h3>${name}</h3>
+
+                        <button
+                            onclick="window.location.href='${pageUrl}'"
+                            style="
+                                width:100%;
+                                margin-bottom:10px;
+                                padding:10px;
+                                border:none;
+                                border-radius:8px;
+                                background:#007bff;
+                                color:white;
+                            "
+                        >
+                            Open Building
+                        </button>
+
+                        <button
+                            onclick="routeToBuilding(${lat}, ${lng}, '${name}')"
+                            style="
+                                width:100%;
+                                padding:10px;
+                                border:none;
+                                border-radius:8px;
+                                background:#28a745;
+                                color:white;
+                            "
+                        >
+                            Directions
+                        </button>
+
+                    </div>
+                    `
+                );
+
+                layer.openPopup(e.latlng);
+            });
         }
 
-        //
-        // DESTINATION
-        //
+    }).addTo(map);
+});
 
-        const destination =
-            event.latlng;
+//
+// ============================================
+// ROUTING FUNCTION (FIXED)
+// ============================================
+//
 
-        //
-        // CHECK CAMPUS BOUNDARY
-        //
+function routeToBuilding(lat, lng, name) {
 
-        if (
-            !campusBounds.contains(
-                destination
-            )
-        ) {
-
-            alert(
-                "Destination outside campus boundary."
-            );
-
-            return;
-        }
-
-        //
-        // REMOVE OLD DESTINATION
-        //
-
-        if (destinationMarker) {
-
-            map.removeLayer(
-                destinationMarker
-            );
-        }
-
-        //
-        // CREATE DESTINATION MARKER
-        //
-
-        destinationMarker =
-            L.marker(destination)
-            .addTo(map)
-            .bindPopup(
-                "Destination"
-            )
-            .openPopup();
-
-        //
-        // REMOVE OLD ROUTE
-        //
-
-        if (routingControl) {
-
-            map.removeControl(
-                routingControl
-            );
-        }
-
-        //
-        // CREATE FOOTPATH ROUTE
-        //
-
-        routingControl =
-            L.Routing.control({
-
-                waypoints: [
-
-                    userLatLng,
-
-                    destination
-                ],
-
-                //
-                // FOOT ROUTING ENGINE
-                //
-
-                router:
-                    L.Routing.osrmv1({
-
-                    serviceUrl:
-                        'https://routing.openstreetmap.de/routed-foot/route/v1',
-
-                    profile: 'driving'
-                }),
-
-                //
-                // ROUTE STYLE
-                //
-
-                lineOptions: {
-
-                    styles: [
-                        {
-                            color: '#007bff',
-
-                            weight: 6,
-
-                            opacity: 0.9
-                        }
-                    ]
-                },
-
-                //
-                // ROUTING OPTIONS
-                //
-
-                routeWhileDragging: false,
-
-                addWaypoints: false,
-
-                draggableWaypoints: false,
-
-                fitSelectedRoutes: true,
-
-                showAlternatives: false,
-
-                collapsible: true,
-
-                show: false,
-
-                createMarker: function() {
-                    return null;
-                }
-
-            }).addTo(map);
+    if (!userLatLng) {
+        alert("Waiting for GPS location...");
+        return;
     }
-);
 
-//
-// ============================================
-// KEEP MAP INSIDE BOUNDS
-// ============================================
-//
+    const destination = L.latLng(lat, lng);
 
-map.on(
-    'drag',
-    function() {
-
-        map.panInsideBounds(
-            campusBounds,
-            {
-                animate: false
-            }
-        );
+    if (destinationMarker) {
+        map.removeLayer(destinationMarker);
     }
-);
+
+    destinationMarker = L.marker(destination)
+        .addTo(map)
+        .bindPopup(name)
+        .openPopup();
+
+    if (routingControl) {
+        map.removeControl(routingControl);
+    }
+
+    routingControl = L.Routing.control({
+
+        waypoints: [
+            userLatLng,
+            destination
+        ],
+
+        router: L.Routing.osrmv1({
+
+            serviceUrl:
+                'https://routing.openstreetmap.de/routed-foot/route/v1',
+
+            profile: 'driving'
+        }),
+
+        lineOptions: {
+            styles: [{
+                color: '#007bff',
+                weight: 6,
+                opacity: 0.9
+            }]
+        },
+
+        routeWhileDragging: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        show: false,
+
+        createMarker: () => null
+
+    }).addTo(map);
+
+    map.closePopup();
+}
+
+//
+// ============================================
+// BOUNDARY LOCK
+// ============================================
+//
+
+map.on('drag', function() {
+
+    map.panInsideBounds(campusBounds, {
+        animate: false
+    });
+});
