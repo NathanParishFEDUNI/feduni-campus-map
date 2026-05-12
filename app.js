@@ -1,8 +1,7 @@
 //
 // ============================================
 // CAMPUS BOUNDS
-// ============================================
-//
+
 
 const southWest = L.latLng(-37.63012, 143.88818);
 const northEast = L.latLng(-37.62208, 143.89760);
@@ -12,8 +11,7 @@ const campusBounds = L.latLngBounds(southWest, northEast);
 //
 // ============================================
 // MAP INIT
-// ============================================
-//
+
 
 const map = L.map('map', {
 
@@ -35,8 +33,7 @@ map.attributionControl.setPrefix(false);
 //
 // ============================================
 // BASE MAP
-// ============================================
-//
+
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
@@ -45,8 +42,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 //
 // ============================================
 // SHARED OSRM FOOT ROUTER
-// ============================================
-//
+
 
 const sharedRouter = L.Routing.osrmv1({
     serviceUrl: 'https://routing.openstreetmap.de/routed-foot/route/v1'
@@ -55,8 +51,7 @@ const sharedRouter = L.Routing.osrmv1({
 //
 // ============================================
 // USER LOCATION
-// ============================================
-//
+
 
 let userMarker = null;
 let accuracyCircle = null;
@@ -65,8 +60,7 @@ let userLatLng = null;
 //
 // ============================================
 // ROUTING STATE
-// ============================================
-//
+
 
 let routingControl = null;
 let destinationMarker = null;
@@ -74,8 +68,7 @@ let destinationMarker = null;
 //
 // ============================================
 // LIVE GPS
-// ============================================
-//
+
 
 function updateUserLocation(lat, lng, accuracy) {
 
@@ -133,8 +126,7 @@ if (navigator.geolocation) {
 //
 // ============================================
 // BUILDINGS GEOJSON
-// ============================================
-//
+
 
 fetch('data/buildings.geojson')
 .then(res => res.json())
@@ -209,8 +201,7 @@ fetch('data/buildings.geojson')
 //
 // ============================================
 // ROUTING FUNCTION
-// ============================================
-//
+
 
 function routeToBuilding(lat, lng, name) {
 
@@ -266,8 +257,7 @@ function routeToBuilding(lat, lng, name) {
 //
 // ============================================
 // MAP CLICK (FREE DESTINATION)
-// ============================================
-//
+
 
 map.on('click', function(e) {
 
@@ -334,8 +324,7 @@ map.on('click', function(e) {
 //
 // ============================================
 // BOUNDARY LOCK
-// ============================================
-//
+
 
 map.on('drag', function() {
     map.panInsideBounds(campusBounds, { animate: false });
